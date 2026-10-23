@@ -75,11 +75,3 @@ Silver pseudonymisé reste une donnée personnelle. Les suppressions SQL physiqu
 
 Les 40 définitions ont été comparées aux propriétés des objets publiés dans Azure le 23 octobre 2026 à 10:22 UTC : 40 correspondances, aucune différence ni définition manquante. Voir [le contrôle d’export](docs/preuves/export_live_comparison.json).
 
-## Comprendre et redéployer
-
-1. Lire le manifeste, le maître certifié, les cinq ADR et le runbook. `python3 tests/validate_export.py` contrôle le JSON et les dépendances sans accès Azure.
-2. `python3 deploy_existing.py` effectue uniquement une vérification locale et affiche l’ordre de dépendances de l’entrée de production.
-3. Pour une factory existante, adapter les noms techniques SQL, ADLS et Key Vault dans les objets, puis configurer les connexions, permissions, containers, schéma SQL et procédures préexistantes. Ne pas remplacer le sel de l’environnement existant.
-4. Dans un environnement Azure CLI déjà authentifié, définir `AZURE_DATA_FACTORY_RESOURCE_URL=https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.DataFactory/factories/<factory>` puis lancer `python3 deploy_existing.py --apply` après revue. Le script vérifie l’existence avant PUT, conserve les Linked Services existants et ne démarre aucun déclencheur ni pipeline.
-
-L’export est un ensemble de définitions d’objets ADF, **pas un template ARM complet de l’infrastructure**. Il ne recrée pas les ressources, RBAC, données, tables/procédures SQL ou secrets. Les paramètres `target_date`, `validation_mode`, chemins et noms de ressources doivent être revus pour l’environnement cible. Les triggers et objets de test sont archivés mais ne sont pas appliqués par ce script.

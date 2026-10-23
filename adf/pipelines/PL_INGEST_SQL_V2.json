@@ -1,0 +1,258 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "OldLocations",
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT CONVERT(varchar(33),last_watermark,126) AS wm FROM dbo.pipeline_state WHERE source_table='locations'",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "OldLocations",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "OldAbonnes",
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT CONVERT(varchar(33),last_watermark,126) AS wm FROM dbo.pipeline_state WHERE source_table='abonnes'",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "OldAbonnes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IfLocationsModified",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@greater(pipeline().parameters.upper_locations,activity('OldLocations').output.firstRow.wm)"
+          },
+          "ifFalseActivities": [],
+          "ifTrueActivities": [
+            {
+              "inputs": [
+                {
+                  "referenceName": "DS_SQL_LOCATIONS",
+                  "type": "DatasetReference"
+                }
+              ],
+              "name": "CopyLocations",
+              "outputs": [
+                {
+                  "parameters": {
+                    "filename": "locations.parquet",
+                    "folder": {
+                      "type": "Expression",
+                      "value": "@concat('sql/locations/run_id=',pipeline().parameters.batch_id)"
+                    }
+                  },
+                  "referenceName": "DS_RAW_PARQUET",
+                  "type": "DatasetReference"
+                }
+              ],
+              "policy": {
+                "retry": 2,
+                "retryIntervalInSeconds": 40,
+                "timeout": "0.04:00:00"
+              },
+              "type": "Copy",
+              "typeProperties": {
+                "enableStaging": false,
+                "sink": {
+                  "formatSettings": {
+                    "type": "ParquetWriteSettings"
+                  },
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "type": "ParquetSink"
+                },
+                "source": {
+                  "queryTimeout": "02:00:00",
+                  "sqlReaderQuery": {
+                    "type": "Expression",
+                    "value": "@concat('SELECT * FROM dbo.locations WHERE modifie_le > DATEADD(day,-7,CONVERT(datetime2,''',activity('OldLocations').output.firstRow.wm,''')) AND modifie_le <= CONVERT(datetime2,''',pipeline().parameters.upper_locations,''')')"
+                  },
+                  "type": "AzureSqlSource"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IfLocationsModified",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IfAbonnesModified",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@greater(pipeline().parameters.upper_abonnes,activity('OldAbonnes').output.firstRow.wm)"
+          },
+          "ifFalseActivities": [],
+          "ifTrueActivities": [
+            {
+              "inputs": [
+                {
+                  "referenceName": "DS_SQL_ABONNES",
+                  "type": "DatasetReference"
+                }
+              ],
+              "name": "CopyAbonnes",
+              "outputs": [
+                {
+                  "parameters": {
+                    "filename": "abonnes.parquet",
+                    "folder": {
+                      "type": "Expression",
+                      "value": "@concat('sql/abonnes/run_id=',pipeline().parameters.batch_id)"
+                    }
+                  },
+                  "referenceName": "DS_RAW_PARQUET",
+                  "type": "DatasetReference"
+                }
+              ],
+              "policy": {
+                "retry": 2,
+                "retryIntervalInSeconds": 40,
+                "timeout": "0.04:00:00"
+              },
+              "type": "Copy",
+              "typeProperties": {
+                "enableStaging": false,
+                "sink": {
+                  "formatSettings": {
+                    "type": "ParquetWriteSettings"
+                  },
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "type": "ParquetSink"
+                },
+                "source": {
+                  "queryTimeout": "02:00:00",
+                  "sqlReaderQuery": {
+                    "type": "Expression",
+                    "value": "@concat('SELECT * FROM dbo.abonnes WHERE modifie_le > DATEADD(day,-7,CONVERT(datetime2,''',activity('OldAbonnes').output.firstRow.wm,''')) AND modifie_le <= CONVERT(datetime2,''',pipeline().parameters.upper_abonnes,''')')"
+                  },
+                  "type": "AzureSqlSource"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IfAbonnesModified",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "inputs": [
+          {
+            "referenceName": "DS_SQL_STATIONS",
+            "type": "DatasetReference"
+          }
+        ],
+        "name": "CopyStations",
+        "outputs": [
+          {
+            "parameters": {
+              "filename": "stations.parquet",
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('sql/stations/run_id=',pipeline().parameters.batch_id)"
+              }
+            },
+            "referenceName": "DS_RAW_PARQUET",
+            "type": "DatasetReference"
+          }
+        ],
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Copy",
+        "typeProperties": {
+          "enableStaging": false,
+          "sink": {
+            "formatSettings": {
+              "type": "ParquetWriteSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "ParquetSink"
+          },
+          "source": {
+            "queryTimeout": "02:00:00",
+            "sqlReaderQuery": "SELECT * FROM dbo.stations",
+            "type": "AzureSqlSource"
+          }
+        }
+      }
+    ],
+    "concurrency": 1,
+    "lastPublishTime": "2026-10-23T01:35:50Z",
+    "parameters": {
+      "batch_id": {
+        "type": "String"
+      },
+      "upper_abonnes": {
+        "type": "String"
+      },
+      "upper_locations": {
+        "type": "String"
+      }
+    }
+  }
+}

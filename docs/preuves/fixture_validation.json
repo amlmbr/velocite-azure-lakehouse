@@ -1,0 +1,36 @@
+{
+  "checks": {
+    "8_inputs": true,
+    "3_invalid_quarantined": true,
+    "4_unique_final": true,
+    "latest_versions_exact": true,
+    "two_successful_fixture_runs": true,
+    "no_extra_delta_commit_on_replay": true
+  },
+  "passed": true,
+  "rows": 4,
+  "quarantine": 3,
+  "delta_version": 1,
+  "checksum": "4f9d84d3d2c0cee38b07aa2b5190dad6b4e403954446b46c9edcec24147bc28b",
+  "runs": [
+    {
+      "run_id": "4e909b9f-3a12-44de-8a89-2b1362e35f8e",
+      "parameters": {
+        "batch_id": "fixture_int96_first_20261023",
+        "input_path": "validation/session_20261023_int96"
+      },
+      "start": "2026-10-23T01:28:54.71765Z",
+      "end": "2026-10-23T01:33:29.8706674Z"
+    },
+    {
+      "run_id": "b2fefb75-974d-417f-a520-9fb2a489fa5e",
+      "parameters": {
+        "batch_id": "fixture_int96_replay_20261023",
+        "input_path": "validation/session_20261023_int96"
+      },
+      "start": "2026-10-23T01:44:01.8741965Z",
+      "end": "2026-10-23T01:48:20.8908127Z"
+    }
+  ],
+  "scope": "isolated Raw fixture, no SQL source modifications"
+}

@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "LS_REST",
+      "type": "LinkedServiceReference"
+    },
+    "schema": [],
+    "type": "RestResource",
+    "typeProperties": {
+      "relativeUrl": "station_status.json"
+    }
+  }
+}

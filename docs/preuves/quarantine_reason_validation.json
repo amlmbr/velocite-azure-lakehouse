@@ -1,0 +1,12 @@
+{
+  "rows": 3,
+  "reasons": [
+    "INVALID_LOCATION;AMOUNT_INVALID;",
+    "INVALID_LOCATION;END_BEFORE_START;",
+    "INVALID_LOCATION;START_MISSING_OR_INVALID;"
+  ],
+  "batch_ids": [
+    "fixture_reason_20261023"
+  ],
+  "passed": true
+}

@@ -1,0 +1,180 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "ReadCertifiedMarker",
+        "policy": {
+          "retry": 0,
+          "timeout": "0.00:02:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "authentication": {
+            "resource": "https://storage.azure.com/",
+            "type": "MSI"
+          },
+          "headers": {
+            "x-ms-version": "2023-11-03"
+          },
+          "method": "GET",
+          "url": "https://stvct26a7b9.blob.core.windows.net/consumption/current.json"
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "ReadCertifiedMarker",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "RecoveryGate",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@and(equals(activity('ReadCertifiedMarker').output.batch_id,'9266ed32-4edf-4559-a790-dcd86a099475'),equals(activity('ReadCertifiedMarker').output.status,'certified'))"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "RejectRecovery",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "RECOVERY_MARKER_MISMATCH",
+                "message": "Recovery only for the observed certified snapshot"
+              }
+            }
+          ],
+          "ifTrueActivities": [
+            {
+              "name": "CertifiedSnapshotConfirmed",
+              "type": "Wait",
+              "typeProperties": {
+                "waitTimeInSeconds": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "RecoveryGate",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "linkedServiceName": {
+          "referenceName": "LS_SQL",
+          "type": "LinkedServiceReference"
+        },
+        "name": "CommitLocations",
+        "type": "SqlServerStoredProcedure",
+        "typeProperties": {
+          "storedProcedureName": "dbo.sp_commit_watermark",
+          "storedProcedureParameters": {
+            "new_watermark": {
+              "type": "String",
+              "value": {
+                "type": "Expression",
+                "value": "@activity('ReadCertifiedMarker').output.upper_locations"
+              }
+            },
+            "source_table": {
+              "type": "String",
+              "value": "locations"
+            }
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CommitLocations",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "linkedServiceName": {
+          "referenceName": "LS_SQL",
+          "type": "LinkedServiceReference"
+        },
+        "name": "CommitAbonnes",
+        "type": "SqlServerStoredProcedure",
+        "typeProperties": {
+          "storedProcedureName": "dbo.sp_commit_watermark",
+          "storedProcedureParameters": {
+            "new_watermark": {
+              "type": "String",
+              "value": {
+                "type": "Expression",
+                "value": "@activity('ReadCertifiedMarker').output.upper_abonnes"
+              }
+            },
+            "source_table": {
+              "type": "String",
+              "value": "abonnes"
+            }
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CommitAbonnes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "ReadCommittedWatermarks",
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT MAX(CASE WHEN source_table='locations' THEN CONVERT(varchar(33),last_watermark,126) END) AS locations, MAX(CASE WHEN source_table='abonnes' THEN CONVERT(varchar(33),last_watermark,126) END) AS abonnes FROM dbo.pipeline_state",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "ReadCommittedWatermarks",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "VerifyWatermarkCommit",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@and(greaterOrEquals(ticks(activity('ReadCommittedWatermarks').output.firstRow.locations),ticks(activity('ReadCertifiedMarker').output.upper_locations)),greaterOrEquals(ticks(activity('ReadCommittedWatermarks').output.firstRow.abonnes),ticks(activity('ReadCertifiedMarker').output.upper_abonnes)))"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "WatermarkVerificationFailed",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "WATERMARK_VERIFICATION_FAILED",
+                "message": "Stored procedure returned but watermarks did not reach the captured upper bounds"
+              }
+            }
+          ],
+          "ifTrueActivities": []
+        }
+      }
+    ],
+    "concurrency": 1,
+    "lastPublishTime": "2026-10-23T08:05:15Z"
+  }
+}

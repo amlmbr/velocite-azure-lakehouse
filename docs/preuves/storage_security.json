@@ -1,0 +1,8 @@
+{
+  "hierarchicalNamespace": true,
+  "httpsOnly": true,
+  "minTls": "TLS1_2",
+  "publicBlobAccess": false,
+  "publicNetwork": null,
+  "sku": "Standard_LRS"
+}

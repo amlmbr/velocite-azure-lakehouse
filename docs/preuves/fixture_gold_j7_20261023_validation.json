@@ -1,0 +1,39 @@
+{
+  "batch": "fixture_gold_j7_20261023",
+  "checks": {
+    "silver_unique": true,
+    "daily_exact_in_paris": true,
+    "station_daily_exact_in_paris": true,
+    "daily_unique": true,
+    "station_keys_unique": true,
+    "four_weather_cities": true,
+    "weather_target_day": true,
+    "weather_numbers_valid": true,
+    "velib_unique": true,
+    "velib_nonnegative": true,
+    "availability_exact": true,
+    "no_subscriber_fields_in_gold": true,
+    "j7_corrected_event_in_original_day": true
+  },
+  "passed": true,
+  "silver_rows": 4,
+  "silver_delta_version": 1,
+  "gold_rows": {
+    "daily": 2,
+    "stations": 3,
+    "meteo": 4,
+    "velib": 1519,
+    "disponibilite": 1
+  },
+  "locations": 4,
+  "amount": "16.00",
+  "availability": {
+    "nb_stations": 1519,
+    "velos_disponibles": 18651,
+    "places_disponibles": 29529,
+    "stations_vides": 109,
+    "stations_pleines": 31
+  },
+  "timezone": "Europe/Paris",
+  "secret_displayed_or_saved": false
+}

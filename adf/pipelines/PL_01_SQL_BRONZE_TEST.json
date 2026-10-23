@@ -1,0 +1,88 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "UpperLocations",
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT CONVERT(varchar(33),COALESCE(MAX(modifie_le),CONVERT(datetime2,'19000101')),126) AS wm FROM dbo.locations",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "UpperLocations",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "UpperAbonnes",
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT CONVERT(varchar(33),COALESCE(MAX(modifie_le),CONVERT(datetime2,'19000101')),126) AS wm FROM dbo.abonnes",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "UpperAbonnes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IngestSQL",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "upper_abonnes": {
+              "type": "Expression",
+              "value": "@activity('UpperAbonnes').output.firstRow.wm"
+            },
+            "upper_locations": {
+              "type": "Expression",
+              "value": "@activity('UpperLocations').output.firstRow.wm"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_INGEST_SQL",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      }
+    ],
+    "lastPublishTime": "2026-10-22T21:09:16Z"
+  }
+}

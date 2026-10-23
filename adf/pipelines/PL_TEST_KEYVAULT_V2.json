@@ -1,0 +1,26 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "GetPseudoSalt",
+        "policy": {
+          "retry": 0,
+          "secureOutput": true,
+          "timeout": "00:10:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "authentication": {
+            "resource": "https://vault.azure.net",
+            "type": "MSI"
+          },
+          "method": "GET",
+          "url": "https://kv-vct26a7b9.vault.azure.net/secrets/velocite-pseudo-salt?api-version=7.5"
+        }
+      }
+    ],
+    "concurrency": 1,
+    "description": "Test Key Vault sans Spark",
+    "lastPublishTime": "2026-10-22T23:32:46Z"
+  }
+}

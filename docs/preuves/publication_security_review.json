@@ -1,0 +1,10 @@
+{
+  "scope": "All public working-tree files before first project commit; no binary files or raw data included",
+  "files_checked": 71,
+  "credential_pattern_findings": 0,
+  "personal_email_findings": 0,
+  "source_data_files": 0,
+  "salt_value_included": false,
+  "linked_services": "Managed identities / public endpoint; no connection credentials",
+  "history": "Only GitHub generated README initialization precedes project publication; sanitized files only in project commit"
+}

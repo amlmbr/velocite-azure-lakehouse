@@ -1,0 +1,26 @@
+{
+  "annotations": [],
+  "debugRunId": null,
+  "durationInMs": 15620,
+  "id": "/SUBSCRIPTIONS/972662E3-6EF1-446F-9B54-B480F13AF457/RESOURCEGROUPS/RG-VELOCITE-DEV/PROVIDERS/MICROSOFT.DATAFACTORY/FACTORIES/ADF-VCT26A7B9/pipelineruns/229265f4-5b3e-419b-bdae-acc8be16bffe",
+  "invokedBy": {
+    "id": "4f4b7e70878145f482351634793ccdd2",
+    "invokedByType": "Manual",
+    "name": "Manual"
+  },
+  "isLatest": true,
+  "lastUpdated": "2026-10-23T08:09:45.6256895Z",
+  "message": "",
+  "parameters": {},
+  "pipelineName": "PL_TEST_SOURCE_STATE_V2",
+  "pipelineReturnValue": {},
+  "runDimension": {
+    "windowEndTime": null,
+    "windowStartTime": null
+  },
+  "runEnd": "2026-10-23T08:09:45.6254513Z",
+  "runGroupId": "229265f4-5b3e-419b-bdae-acc8be16bffe",
+  "runId": "229265f4-5b3e-419b-bdae-acc8be16bffe",
+  "runStart": "2026-10-23T08:09:30.0053237Z",
+  "status": "Succeeded"
+}

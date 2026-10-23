@@ -1,0 +1,50 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "inputs": [
+          {
+            "referenceName": "DS_SQL_LOCATIONS",
+            "type": "DatasetReference"
+          }
+        ],
+        "name": "CopyLocationsToRaw",
+        "outputs": [
+          {
+            "parameters": {
+              "filename": "locations.parquet",
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('sql/locations/test_run_id=',pipeline().RunId)"
+              }
+            },
+            "referenceName": "DS_RAW_PARQUET",
+            "type": "DatasetReference"
+          }
+        ],
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 30,
+          "timeout": "0.02:00:00"
+        },
+        "type": "Copy",
+        "typeProperties": {
+          "sink": {
+            "formatSettings": {
+              "type": "ParquetWriteSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "ParquetSink"
+          },
+          "source": {
+            "sqlReaderQuery": "SELECT * FROM dbo.locations",
+            "type": "AzureSqlSource"
+          }
+        }
+      }
+    ],
+    "lastPublishTime": "2026-10-22T20:40:17Z"
+  }
+}

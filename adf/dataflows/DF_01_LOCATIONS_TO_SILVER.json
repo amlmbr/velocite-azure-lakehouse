@@ -1,0 +1,68 @@
+{
+  "properties": {
+    "type": "MappingDataFlow",
+    "typeProperties": {
+      "scriptLines": [
+        "parameters{",
+        "  inputPath as string,",
+        "  batchId as string,",
+        "  salt as string",
+        "}",
+        "source(output(location_id as integer, abonne_id as integer, station_depart as integer, station_arrivee as integer, debut as timestamp, fin as timestamp, montant as decimal(6,2), modifie_le as timestamp), allowSchemaDrift: false, validateSchema: false, store: 'azureblobfs', format: 'parquet', fileSystem: 'raw', folderPath: $inputPath) ~> RawLocations",
+        "RawLocations derive(abonne_pseudo = sha2(256, concat($salt, toString(abonne_id))), batch_id = $batchId, validite_ok = !isNull(location_id) && !isNull(debut) && !isNull(montant) && montant >= 0 && (isNull(fin) || fin >= debut) && !isNull(station_depart) && !isNull(station_arrivee)) ~> DQColumns",
+        "DQColumns split(validite_ok, disjoint: false) ~> SplitQuality@(ValidRows, InvalidRows)",
+        "ValidRows window(over(location_id), desc(modifie_le, true), seq = rowNumber()) ~> RankVersions",
+        "RankVersions filter(seq == 1) ~> UniqueVersions",
+        "UniqueVersions select(mapColumn(location_id, abonne_pseudo, station_depart, station_arrivee, debut, fin, montant, modifie_le)) ~> SilverColumns",
+        "SilverColumns alterRow(upsertIf(true())) ~> SetUpsert",
+        "SetUpsert sink(allowSchemaDrift: false, validateSchema: false, store: 'azureblobfs', format: 'delta', fileSystem: 'curated', folderPath: 'locations_delta', keys: ['location_id'], insertable: false, updateable: false, upsertable: true, deletable: false, mergeSchema: false, optimizedWrite: false, autoCompact: false, vacuum: 0, skipDuplicateMapInputs: true, skipDuplicateMapOutputs: true) ~> SilverDelta",
+        "InvalidRows sink(allowSchemaDrift: true, validateSchema: false, store: 'azureblobfs', format: 'parquet', fileSystem: 'staging', folderPath: 'quarantine/locations/' + $batchId, skipDuplicateMapInputs: true, skipDuplicateMapOutputs: true) ~> Quarantine"
+      ],
+      "sinks": [
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "SilverDelta"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "Quarantine"
+        }
+      ],
+      "sources": [
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "RawLocations"
+        }
+      ],
+      "transformations": [
+        {
+          "name": "DQColumns"
+        },
+        {
+          "name": "SplitQuality"
+        },
+        {
+          "name": "RankVersions"
+        },
+        {
+          "name": "UniqueVersions"
+        },
+        {
+          "name": "SilverColumns"
+        },
+        {
+          "name": "SetUpsert"
+        }
+      ]
+    }
+  }
+}

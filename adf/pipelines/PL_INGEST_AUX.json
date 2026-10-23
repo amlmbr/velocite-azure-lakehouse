@@ -1,0 +1,118 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "inputs": [
+          {
+            "referenceName": "DS_LANDING_CSV",
+            "type": "DatasetReference"
+          }
+        ],
+        "name": "CopyMeteo",
+        "outputs": [
+          {
+            "parameters": {
+              "filename": "meteo.csv",
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('meteo/run_id=',pipeline().parameters.batch_id)"
+              }
+            },
+            "referenceName": "DS_RAW_CSV",
+            "type": "DatasetReference"
+          }
+        ],
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Copy",
+        "typeProperties": {
+          "enableStaging": false,
+          "sink": {
+            "formatSettings": {
+              "fileExtension": ".csv",
+              "quoteAllText": true,
+              "type": "DelimitedTextWriteSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "DelimitedTextSink"
+          },
+          "source": {
+            "formatSettings": {
+              "type": "DelimitedTextReadSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSReadSettings"
+            },
+            "type": "DelimitedTextSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CopyMeteo",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "inputs": [
+          {
+            "referenceName": "DS_REST_STATIONS",
+            "type": "DatasetReference"
+          }
+        ],
+        "name": "CopyVelibAPI",
+        "outputs": [
+          {
+            "parameters": {
+              "filename": "station_status.json",
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('api_velib/run_id=',pipeline().parameters.batch_id)"
+              }
+            },
+            "referenceName": "DS_RAW_JSON",
+            "type": "DatasetReference"
+          }
+        ],
+        "policy": {
+          "retry": 2,
+          "retryIntervalInSeconds": 40,
+          "timeout": "0.04:00:00"
+        },
+        "type": "Copy",
+        "typeProperties": {
+          "enableStaging": false,
+          "sink": {
+            "formatSettings": {
+              "filePattern": "setOfObjects",
+              "type": "JsonWriteSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "JsonSink"
+          },
+          "source": {
+            "httpRequestTimeout": "00:02:00",
+            "requestInterval": "00:00:01",
+            "requestMethod": "GET",
+            "type": "RestSource"
+          }
+        }
+      }
+    ],
+    "lastPublishTime": "2026-10-22T21:32:52Z",
+    "parameters": {
+      "batch_id": {
+        "type": "String"
+      }
+    }
+  }
+}

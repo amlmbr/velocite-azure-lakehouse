@@ -1,0 +1,12 @@
+{
+  "batch_id": "c137cb82-4a6e-4412-adbf-a3ea52b751ea",
+  "snapshot": "snapshots/c137cb82-4a6e-4412-adbf-a3ea52b751ea",
+  "published_at_utc": "2026-10-23T08:26:03.9774193Z",
+  "weather_day": "2026-10-22",
+  "upper_locations": "2026-10-22T20:06:45.9649067",
+  "upper_abonnes": "2026-10-22T20:06:44.9858234",
+  "locations": 200000,
+  "execution_mode": "validation",
+  "sla_met": false,
+  "status": "certified"
+}

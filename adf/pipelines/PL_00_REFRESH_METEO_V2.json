@@ -1,0 +1,244 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "TargetDay",
+        "type": "SetVariable",
+        "typeProperties": {
+          "value": {
+            "type": "Expression",
+            "value": "@if(empty(pipeline().parameters.target_date),formatDateTime(addDays(convertTimeZone(utcNow(),'UTC','Romance Standard Time'),-1),'yyyy-MM-dd'),formatDateTime(pipeline().parameters.target_date,'yyyy-MM-dd'))"
+          },
+          "variableName": "target_day"
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "TargetDay",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "WeatherParis",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 10,
+          "timeout": "00:02:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "method": "GET",
+          "url": {
+            "type": "Expression",
+            "value": "@concat('https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&daily=temperature_2m_mean,precipitation_sum,wind_speed_10m_max&timezone=Europe%2FParis&start_date=',variables('target_day'),'&end_date=',variables('target_day'))"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "TargetDay",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "WeatherLyon",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 10,
+          "timeout": "00:02:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "method": "GET",
+          "url": {
+            "type": "Expression",
+            "value": "@concat('https://api.open-meteo.com/v1/forecast?latitude=45.7640&longitude=4.8357&daily=temperature_2m_mean,precipitation_sum,wind_speed_10m_max&timezone=Europe%2FParis&start_date=',variables('target_day'),'&end_date=',variables('target_day'))"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "TargetDay",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "WeatherLille",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 10,
+          "timeout": "00:02:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "method": "GET",
+          "url": {
+            "type": "Expression",
+            "value": "@concat('https://api.open-meteo.com/v1/forecast?latitude=50.6292&longitude=3.0573&daily=temperature_2m_mean,precipitation_sum,wind_speed_10m_max&timezone=Europe%2FParis&start_date=',variables('target_day'),'&end_date=',variables('target_day'))"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "TargetDay",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "WeatherNantes",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 10,
+          "timeout": "00:02:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "method": "GET",
+          "url": {
+            "type": "Expression",
+            "value": "@concat('https://api.open-meteo.com/v1/forecast?latitude=47.2184&longitude=-1.5536&daily=temperature_2m_mean,precipitation_sum,wind_speed_10m_max&timezone=Europe%2FParis&start_date=',variables('target_day'),'&end_date=',variables('target_day'))"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "WeatherParis",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "WeatherLyon",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "WeatherLille",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "WeatherNantes",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "ValidateWeather",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(and(equals(activity('WeatherParis').output.daily.time[0],variables('target_day')),not(equals(activity('WeatherParis').output.daily.temperature_2m_mean[0],null))),not(equals(activity('WeatherParis').output.daily.precipitation_sum[0],null))),not(equals(activity('WeatherParis').output.daily.wind_speed_10m_max[0],null))),greaterOrEquals(float(activity('WeatherParis').output.daily.precipitation_sum[0]),0)),greaterOrEquals(float(activity('WeatherParis').output.daily.wind_speed_10m_max[0]),0)),equals(activity('WeatherLyon').output.daily.time[0],variables('target_day'))),not(equals(activity('WeatherLyon').output.daily.temperature_2m_mean[0],null))),not(equals(activity('WeatherLyon').output.daily.precipitation_sum[0],null))),not(equals(activity('WeatherLyon').output.daily.wind_speed_10m_max[0],null))),greaterOrEquals(float(activity('WeatherLyon').output.daily.precipitation_sum[0]),0)),greaterOrEquals(float(activity('WeatherLyon').output.daily.wind_speed_10m_max[0]),0)),equals(activity('WeatherLille').output.daily.time[0],variables('target_day'))),not(equals(activity('WeatherLille').output.daily.temperature_2m_mean[0],null))),not(equals(activity('WeatherLille').output.daily.precipitation_sum[0],null))),not(equals(activity('WeatherLille').output.daily.wind_speed_10m_max[0],null))),greaterOrEquals(float(activity('WeatherLille').output.daily.precipitation_sum[0]),0)),greaterOrEquals(float(activity('WeatherLille').output.daily.wind_speed_10m_max[0]),0)),equals(activity('WeatherNantes').output.daily.time[0],variables('target_day'))),not(equals(activity('WeatherNantes').output.daily.temperature_2m_mean[0],null))),not(equals(activity('WeatherNantes').output.daily.precipitation_sum[0],null))),not(equals(activity('WeatherNantes').output.daily.wind_speed_10m_max[0],null))),greaterOrEquals(float(activity('WeatherNantes').output.daily.precipitation_sum[0]),0)),greaterOrEquals(float(activity('WeatherNantes').output.daily.wind_speed_10m_max[0]),0))"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "RejectWeather",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "METEO_INVALID",
+                "message": "Open-Meteo missing or invalid daily data; previous landing preserved"
+              }
+            }
+          ],
+          "ifTrueActivities": [
+            {
+              "name": "WriteWeatherCSV",
+              "policy": {
+                "retry": 1,
+                "retryIntervalInSeconds": 10,
+                "timeout": "00:02:00"
+              },
+              "type": "WebActivity",
+              "typeProperties": {
+                "authentication": {
+                  "resource": "https://storage.azure.com/",
+                  "type": "MSI"
+                },
+                "body": {
+                  "type": "Expression",
+                  "value": "@concat('jour,ville,temperature_c,precipitations_mm,vent_kmh',decodeUriComponent('%0A'),variables('target_day'),',Paris,',string(activity('WeatherParis').output.daily.temperature_2m_mean[0]),',',string(activity('WeatherParis').output.daily.precipitation_sum[0]),',',string(activity('WeatherParis').output.daily.wind_speed_10m_max[0]),decodeUriComponent('%0A'),variables('target_day'),',Lyon,',string(activity('WeatherLyon').output.daily.temperature_2m_mean[0]),',',string(activity('WeatherLyon').output.daily.precipitation_sum[0]),',',string(activity('WeatherLyon').output.daily.wind_speed_10m_max[0]),decodeUriComponent('%0A'),variables('target_day'),',Lille,',string(activity('WeatherLille').output.daily.temperature_2m_mean[0]),',',string(activity('WeatherLille').output.daily.precipitation_sum[0]),',',string(activity('WeatherLille').output.daily.wind_speed_10m_max[0]),decodeUriComponent('%0A'),variables('target_day'),',Nantes,',string(activity('WeatherNantes').output.daily.temperature_2m_mean[0]),',',string(activity('WeatherNantes').output.daily.precipitation_sum[0]),',',string(activity('WeatherNantes').output.daily.wind_speed_10m_max[0]),decodeUriComponent('%0A'))"
+                },
+                "headers": {
+                  "Content-Type": "text/csv; charset=utf-8",
+                  "x-ms-blob-type": "BlockBlob",
+                  "x-ms-version": "2023-11-03"
+                },
+                "method": "PUT",
+                "url": {
+                  "type": "Expression",
+                  "value": "@concat('https://stvct26a7b9.blob.core.windows.net/raw/meteo/run_id=',pipeline().parameters.batch_id,'/meteo.csv')"
+                }
+              }
+            },
+            {
+              "dependsOn": [
+                {
+                  "activity": "WriteWeatherCSV",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "name": "WriteProvenance",
+              "policy": {
+                "retry": 1,
+                "retryIntervalInSeconds": 10,
+                "timeout": "00:02:00"
+              },
+              "type": "WebActivity",
+              "typeProperties": {
+                "authentication": {
+                  "resource": "https://storage.azure.com/",
+                  "type": "MSI"
+                },
+                "body": {
+                  "type": "Expression",
+                  "value": "@concat('{\"provider\":\"Open-Meteo\",\"kind\":\"model estimates; not direct station observations\",\"timezone\":\"Europe/Paris\",\"rows\":4,\"source_date\":\"',variables('target_day'),'\",\"retrieved_at_utc\":\"',utcNow(),'\",\"attribution\":\"Open-Meteo CC BY 4.0\",\"pipeline_run_id\":\"',pipeline().RunId,'\"}')"
+                },
+                "headers": {
+                  "Content-Type": "application/json",
+                  "x-ms-blob-type": "BlockBlob",
+                  "x-ms-version": "2023-11-03"
+                },
+                "method": "PUT",
+                "url": {
+                  "type": "Expression",
+                  "value": "@concat('https://stvct26a7b9.blob.core.windows.net/raw/meteo/run_id=',pipeline().parameters.batch_id,'/provenance.json')"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "concurrency": 2,
+    "lastPublishTime": "2026-10-23T01:22:56Z",
+    "parameters": {
+      "batch_id": {
+        "defaultValue": "native_meteo_validation_20261023",
+        "type": "String"
+      },
+      "target_date": {
+        "defaultValue": "",
+        "type": "String"
+      }
+    },
+    "variables": {
+      "target_day": {
+        "type": "String"
+      }
+    }
+  }
+}

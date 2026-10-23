@@ -1,0 +1,90 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "dependsOn": [],
+        "name": "GetPseudoSalt",
+        "policy": {
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": true,
+          "timeout": "00:10:00"
+        },
+        "type": "WebActivity",
+        "typeProperties": {
+          "authentication": {
+            "resource": "https://vault.azure.net",
+            "type": "MSI"
+          },
+          "headers": {},
+          "method": "GET",
+          "url": "https://kv-vct26a7b9.vault.azure.net/secrets/velocite-pseudo-salt?api-version=7.5"
+        },
+        "userProperties": []
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "GetPseudoSalt",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "RunLocationsSilver",
+        "policy": {
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": true,
+          "secureOutput": true,
+          "timeout": "00:20:00"
+        },
+        "type": "ExecuteDataFlow",
+        "typeProperties": {
+          "compute": {
+            "computeType": "General",
+            "coreCount": 8
+          },
+          "dataflow": {
+            "parameters": {
+              "batchId": {
+                "type": "Expression",
+                "value": "'@{pipeline().parameters.batch_id}'"
+              },
+              "inputPath": {
+                "type": "Expression",
+                "value": "'@{pipeline().parameters.input_path}'"
+              },
+              "salt": {
+                "type": "Expression",
+                "value": "'@{activity('GetPseudoSalt').output.value}'"
+              }
+            },
+            "referenceName": "DF_01_LOCATIONS_V2",
+            "type": "DataFlowReference"
+          },
+          "staging": {},
+          "traceLevel": "Coarse"
+        },
+        "userProperties": []
+      }
+    ],
+    "annotations": [],
+    "concurrency": 1,
+    "description": "Velocite - Raw vers Silver Delta",
+    "lastPublishTime": "2026-10-23T01:12:03Z",
+    "parameters": {
+      "batch_id": {
+        "defaultValue": "replay_20261023",
+        "type": "String"
+      },
+      "input_path": {
+        "defaultValue": "sql/locations/run_id=bce1fa42-ce5d-11f1-9a18-00155dad434e",
+        "type": "String"
+      }
+    },
+    "policy": {
+      "elapsedTimeMetric": {}
+    }
+  }
+}

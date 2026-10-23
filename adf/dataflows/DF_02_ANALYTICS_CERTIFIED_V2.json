@@ -1,0 +1,477 @@
+{
+  "properties": {
+    "type": "MappingDataFlow",
+    "typeProperties": {
+      "scriptLines": [
+        "parameters{",
+        "     batchId as string,",
+        "     sqlBatchId as string,",
+        "     auxBatchId as string",
+        "}",
+        "source(output(",
+        "          location_id as integer,",
+        "          montant as decimal(6,2),",
+        "          modifie_le as timestamp,",
+        "          station_depart as integer,",
+        "          station_arrivee as integer,",
+        "          debut as timestamp,",
+        "          fin as timestamp,",
+        "          abonne_pseudo as string",
+        "     ),",
+        "     allowSchemaDrift: false,",
+        "     validateSchema: true,",
+        "     ignoreNoFilesFound: false,",
+        "     format: 'delta',",
+        "     fileSystem: 'curated',",
+        "     folderPath: 'locations_delta') ~> Silver",
+        "source(output(",
+        "          station_id as integer,",
+        "          nom as string,",
+        "          capacite as integer",
+        "     ),",
+        "     allowSchemaDrift: false,",
+        "     validateSchema: true,",
+        "     ignoreNoFilesFound: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'raw',",
+        "     folderPath: ('sql/stations/run_id=' + $sqlBatchId),",
+        "     fileName: 'stations.parquet') ~> Stations",
+        "source(output(",
+        "          jour as string,",
+        "          ville as string,",
+        "          temperature_c as string,",
+        "          precipitations_mm as string,",
+        "          vent_kmh as string",
+        "     ),",
+        "     useSchema: false,",
+        "     allowSchemaDrift: false,",
+        "     validateSchema: false,",
+        "     ignoreNoFilesFound: false,",
+        "     format: 'delimited',",
+        "     fileSystem: 'raw',",
+        "     folderPath: ('meteo/run_id=' + $auxBatchId),",
+        "     fileName: 'meteo.csv',",
+        "     columnDelimiter: ',',",
+        "     escapeChar: '\\\\',",
+        "     quoteChar: '\\\"',",
+        "     columnNamesAsHeader: true) ~> WeatherRaw",
+        "source(output(",
+        "          lastUpdatedOther as long,",
+        "          last_updated as long,",
+        "          ttl as integer,",
+        "          data as (stations as (station_id as long, num_bikes_available as integer, num_docks_available as integer, is_installed as integer, is_returning as integer, is_renting as integer, last_reported as long)[])",
+        "     ),",
+        "     useSchema: false,",
+        "     allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     ignoreNoFilesFound: false,",
+        "     format: 'json',",
+        "     fileSystem: 'raw',",
+        "     folderPath: ('api_velib/run_id=' + $auxBatchId),",
+        "     fileName: 'station_status.json',",
+        "     documentForm: 'documentPerLine') ~> VelibRaw",
+        "Stations select(mapColumn(",
+        "          depart_ref = station_id",
+        "     ),",
+        "     skipDuplicateMapInputs: false,",
+        "     skipDuplicateMapOutputs: false) ~> DepartRefs",
+        "Stations select(mapColumn(",
+        "          arrivee_ref = station_id",
+        "     ),",
+        "     skipDuplicateMapInputs: false,",
+        "     skipDuplicateMapOutputs: false) ~> ArriveeRefs",
+        "Silver, DepartRefs lookup(station_depart == depart_ref,",
+        "     multiple: false,",
+        "     pickup: 'any',",
+        "     broadcast: 'right')~> DepartCheck",
+        "DepartCheck, ArriveeRefs lookup(station_arrivee == arrivee_ref,",
+        "     multiple: false,",
+        "     pickup: 'any',",
+        "     broadcast: 'right')~> ReferenceCheck",
+        "ReferenceCheck aggregate(total = count(),",
+        "          distinct_ids = countDistinct(location_id),",
+        "          missing_keys = sum(iif(isNull(location_id) || isNull(debut) || isNull(abonne_pseudo),",
+        "     1L,",
+        "     0L)),",
+        "          invalid_amounts = sum(iif(isNull(montant) || montant < 0,",
+        "     1L,",
+        "     0L)),",
+        "          invalid_dates = sum(iif(!isNull(fin) && fin < debut,",
+        "     1L,",
+        "     0L)),",
+        "          missing_references = sum(iif(isNull(depart_ref) || isNull(arrivee_ref),",
+        "     1L,",
+        "     0L)),",
+        "          invalid_pseudo = sum(iif(isNull(abonne_pseudo) || length(abonne_pseudo) != 64,",
+        "     1L,",
+        "     0L)),",
+        "          total_montant = sum(montant),",
+        "          latest_event = max(debut)) ~> SilverQuality",
+        "Silver derive(jour = toDate(fromUTC(debut, 'Europe/Paris')),",
+        "          duree_minutes = toDouble(fin - debut) / 60000.0) ~> DatesAndDuration",
+        "DatesAndDuration aggregate(groupBy(jour),",
+        "     nb_locations = count(),",
+        "          revenu = sum(montant),",
+        "          duree_moyenne_minutes = avg(duree_minutes)) ~> Daily",
+        "DatesAndDuration aggregate(groupBy(jour,",
+        "          station_depart),",
+        "     nb_locations = count(),",
+        "          revenu = sum(montant),",
+        "          duree_moyenne_minutes = avg(duree_minutes)) ~> StationDaily",
+        "WeatherRaw derive(date_jour = toDate(jour,",
+        "     'yyyy-MM-dd'),",
+        "          ville_normalisee = trim(ville),",
+        "          temperature = toDouble(temperature_c),",
+        "          precipitations = toDouble(precipitations_mm),",
+        "          vent = toDouble(vent_kmh)) ~> WeatherTyped",
+        "WeatherTyped aggregate(total = count(),",
+        "          distinct_cities = countDistinct(ville_normalisee),",
+        "          invalid = countIf(isNull(date_jour) || isNull(ville_normalisee) || isNull(temperature) || isNull(precipitations) || isNull(vent) || precipitations < 0 || vent < 0),",
+        "          min_day = min(date_jour),",
+        "          max_day = max(date_jour)) ~> WeatherQuality",
+        "WeatherTyped select(mapColumn(",
+        "          jour = date_jour,",
+        "          ville = ville_normalisee,",
+        "          temperature_c = temperature,",
+        "          precipitations_mm = precipitations,",
+        "          vent_kmh = vent",
+        "     ),",
+        "     skipDuplicateMapInputs: false,",
+        "     skipDuplicateMapOutputs: false) ~> WeatherSilver",
+        "VelibRaw foldDown(unroll(data.stations),",
+        "     mapColumn(",
+        "          station_id = data.stations.station_id,",
+        "          num_bikes_available = data.stations.num_bikes_available,",
+        "          num_docks_available = data.stations.num_docks_available,",
+        "          is_installed = data.stations.is_installed,",
+        "          is_returning = data.stations.is_returning,",
+        "          is_renting = data.stations.is_renting,",
+        "          last_reported = data.stations.last_reported,",
+        "          last_updated = last_updated,",
+        "          lastUpdatedOther = lastUpdatedOther,",
+        "          ttl = ttl",
+        "     ),",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true) ~> VelibUnrolled",
+        "VelibUnrolled derive(feed_last_updated = coalesce(last_updated,lastUpdatedOther),",
+        "          feed_ttl = ttl) ~> VelibFlat",
+        "VelibFlat aggregate(total = count(),",
+        "          distinct_ids = countDistinct(station_id),",
+        "          invalid = countIf(isNull(station_id) || isNull(num_bikes_available) || num_bikes_available < 0 || isNull(num_docks_available) || num_docks_available < 0 || isNull(last_reported) || last_reported <= 0),",
+        "          latest_feed_updated = max(feed_last_updated),",
+        "          latest_reported = max(last_reported),",
+        "          oldest_reported = min(last_reported)) ~> VelibQuality",
+        "VelibFlat aggregate(nb_stations = count(),",
+        "          velos_disponibles = sum(num_bikes_available),",
+        "          places_disponibles = sum(num_docks_available),",
+        "          stations_vides = sum(iif(num_bikes_available == 0,",
+        "     1L,",
+        "     0L)),",
+        "          stations_pleines = sum(iif(num_docks_available == 0,",
+        "     1L,",
+        "     0L))) ~> VelibGold",
+        "SilverQuality sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'json',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/quality/silver'),",
+        "     partitionFileNames:['quality.json'],",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     partitionBy('hash', 1),",
+        "     store: 'azureblobfs') ~> SilverQualityFile",
+        "Daily sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/daily'),",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     store: 'azureblobfs') ~> DailyFile",
+        "StationDaily sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/stations'),",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     store: 'azureblobfs') ~> StationFile",
+        "WeatherQuality sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'json',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/quality/meteo'),",
+        "     partitionFileNames:['quality.json'],",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     partitionBy('hash', 1),",
+        "     store: 'azureblobfs') ~> WeatherQualityFile",
+        "WeatherSilver sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/meteo'),",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     store: 'azureblobfs') ~> WeatherFile",
+        "VelibQuality sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'json',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/quality/velib'),",
+        "     partitionFileNames:['quality.json'],",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     partitionBy('hash', 1),",
+        "     store: 'azureblobfs') ~> VelibQualityFile",
+        "VelibFlat sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/velib'),",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     store: 'azureblobfs') ~> VelibFile",
+        "VelibGold sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('analytics/' + $batchId + '/disponibilite'),",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true,",
+        "     store: 'azureblobfs') ~> VelibGoldFile",
+        "source(output(location_id as integer, station_depart as integer, station_arrivee as integer, debut as timestamp, fin as timestamp, montant as decimal(6,2), modifie_le as timestamp), allowSchemaDrift: false, validateSchema: false, ignoreNoFilesFound: true, store: 'azureblobfs', format: 'parquet', fileSystem: 'raw', folderPath: ('sql/locations/run_id=' + $sqlBatchId), fileName: 'locations.parquet') ~> RawForQuality",
+        "RawForQuality derive(raw_location_id = location_id, raw_station_depart = station_depart, raw_station_arrivee = station_arrivee, raw_debut = debut, raw_fin = fin, raw_montant = montant, raw_modifie_le = modifie_le) ~> RawQualityColumns",
+        "RawQualityColumns aggregate(raw_rows = count(), distinct_raw_ids = countDistinct(raw_location_id), raw_invalid = countIf(isNull(raw_location_id) || isNull(raw_debut) || isNull(raw_modifie_le) || isNull(raw_montant) || raw_montant < 0 || isNull(raw_station_depart) || isNull(raw_station_arrivee) || (!isNull(raw_fin) && raw_fin < raw_debut))) ~> RawQualityMetrics",
+        "RawQualityMetrics sink(allowSchemaDrift: true, validateSchema: false, store: 'azureblobfs', format: 'json', fileSystem: 'staging', folderPath: ('analytics/' + $batchId + '/quality/raw'), partitionFileNames: ['quality.json'], skipDuplicateMapInputs: true, skipDuplicateMapOutputs: true, partitionBy('hash', 1)) ~> RawQualityFile",
+        "RawQualityColumns window(over(raw_location_id), desc(raw_modifie_le, false), raw_rank = rowNumber()) ~> RawRank",
+        "RawRank filter(raw_rank == 1) ~> RawLatest",
+        "RawLatest select(mapColumn(raw_location_id, raw_station_depart, raw_station_arrivee, raw_debut, raw_fin, raw_montant, raw_modifie_le)) ~> ExpectedValues",
+        "ExpectedValues, Silver lookup(raw_location_id == location_id, multiple: false, pickup: 'any', broadcast: 'auto') ~> ExactJoin",
+        "ExactJoin aggregate(checked = count(), differences = countIf(isNull(location_id) || raw_montant != montant || raw_station_depart != station_depart || raw_station_arrivee != station_arrivee || raw_debut != debut || raw_modifie_le != modifie_le || iif(isNull(raw_fin), !isNull(fin), isNull(fin) || raw_fin != fin))) ~> ExactMetrics",
+        "ExactMetrics sink(allowSchemaDrift: true, validateSchema: false, store: 'azureblobfs', format: 'json', fileSystem: 'staging', folderPath: ('analytics/' + $batchId + '/quality/exact'), partitionFileNames: ['quality.json'], skipDuplicateMapInputs: true, skipDuplicateMapOutputs: true, partitionBy('hash', 1)) ~> ExactQualityFile",
+        "source(output(abonne_id as integer, ville as string, modifie_le as timestamp), allowSchemaDrift: false, validateSchema: false, ignoreNoFilesFound: true, store: 'azureblobfs', format: 'parquet', fileSystem: 'raw', folderPath: ('sql/abonnes/run_id=' + $sqlBatchId), fileName: 'abonnes.parquet') ~> RawAbonnesForQuality",
+        "RawAbonnesForQuality aggregate(raw_rows = count(), distinct_ids = countDistinct(abonne_id), invalid = countIf(isNull(abonne_id) || isNull(ville) || isNull(modifie_le))) ~> AbonnesMetrics",
+        "AbonnesMetrics sink(allowSchemaDrift: true, validateSchema: false, store: 'azureblobfs', format: 'json', fileSystem: 'staging', folderPath: ('analytics/' + $batchId + '/quality/abonnes'), partitionFileNames: ['quality.json'], skipDuplicateMapInputs: true, skipDuplicateMapOutputs: true, partitionBy('hash', 1)) ~> AbonnesQualityFile"
+      ],
+      "sinks": [
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "SilverQualityFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "DailyFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "StationFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "WeatherQualityFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "WeatherFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "VelibQualityFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "VelibFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "VelibGoldFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "RawQualityFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "ExactQualityFile"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "AbonnesQualityFile"
+        }
+      ],
+      "sources": [
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "Silver"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "Stations"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "WeatherRaw"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "VelibRaw"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "RawForQuality"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "RawAbonnesForQuality"
+        }
+      ],
+      "transformations": [
+        {
+          "name": "DepartRefs"
+        },
+        {
+          "name": "ArriveeRefs"
+        },
+        {
+          "name": "DepartCheck"
+        },
+        {
+          "name": "ReferenceCheck"
+        },
+        {
+          "name": "SilverQuality"
+        },
+        {
+          "name": "DatesAndDuration"
+        },
+        {
+          "name": "Daily"
+        },
+        {
+          "name": "StationDaily"
+        },
+        {
+          "name": "WeatherTyped"
+        },
+        {
+          "name": "WeatherQuality"
+        },
+        {
+          "name": "WeatherSilver"
+        },
+        {
+          "name": "VelibFlat"
+        },
+        {
+          "name": "VelibQuality"
+        },
+        {
+          "name": "VelibGold"
+        },
+        {
+          "name": "RawQualityColumns"
+        },
+        {
+          "name": "RawQualityMetrics"
+        },
+        {
+          "name": "RawRank"
+        },
+        {
+          "name": "RawLatest"
+        },
+        {
+          "name": "ExpectedValues"
+        },
+        {
+          "name": "ExactJoin"
+        },
+        {
+          "name": "ExactMetrics"
+        },
+        {
+          "name": "AbonnesMetrics"
+        },
+        {
+          "name": "VelibUnrolled"
+        }
+      ]
+    }
+  }
+}

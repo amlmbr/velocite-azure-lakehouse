@@ -1,0 +1,12 @@
+{
+  "properties": {
+    "type": "AzureSqlDatabase",
+    "typeProperties": {
+      "authenticationType": "SystemAssignedManagedIdentity",
+      "database": "velocite",
+      "encrypt": "mandatory",
+      "server": "sql-vct26a7b9.database.windows.net",
+      "trustServerCertificate": false
+    }
+  }
+}

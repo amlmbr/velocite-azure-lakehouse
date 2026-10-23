@@ -1,0 +1,235 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "BuildAnalytics",
+        "type": "Wait",
+        "typeProperties": {
+          "waitTimeInSeconds": 1
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "BuildAnalytics",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "QualitySilver",
+        "policy": {
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "timeout": "00:20:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "parameters": {
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('analytics/',pipeline().parameters.batch_id,'/quality/silver')"
+              }
+            },
+            "referenceName": "DS_QUALITY_V2",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "formatSettings": {
+              "type": "JsonReadSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSReadSettings"
+            },
+            "type": "JsonSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "BuildAnalytics",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "QualityMeteo",
+        "policy": {
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "timeout": "00:20:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "parameters": {
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('analytics/',pipeline().parameters.batch_id,'/quality/meteo')"
+              }
+            },
+            "referenceName": "DS_QUALITY_V2",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "formatSettings": {
+              "type": "JsonReadSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSReadSettings"
+            },
+            "type": "JsonSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "BuildAnalytics",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "QualityVelib",
+        "policy": {
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "timeout": "00:20:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "parameters": {
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('analytics/',pipeline().parameters.batch_id,'/quality/velib')"
+              }
+            },
+            "referenceName": "DS_QUALITY_V2",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "formatSettings": {
+              "type": "JsonReadSettings"
+            },
+            "storeSettings": {
+              "type": "AzureBlobFSReadSettings"
+            },
+            "type": "JsonSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "QualitySilver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "QualityMeteo",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "QualityVelib",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "QualityGate",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@and(and(and(and(and(and(and(and(and(and(and(and(greater(activity('QualitySilver').output.firstRow.total,0),equals(activity('QualitySilver').output.firstRow.total,activity('QualitySilver').output.firstRow.distinct_ids)),equals(activity('QualitySilver').output.firstRow.missing_keys,0)),equals(activity('QualitySilver').output.firstRow.invalid_amounts,0)),equals(activity('QualitySilver').output.firstRow.invalid_dates,0)),equals(activity('QualitySilver').output.firstRow.missing_references,0)),equals(activity('QualitySilver').output.firstRow.invalid_pseudo,0)),equals(activity('QualityMeteo').output.firstRow.total,4)),equals(activity('QualityMeteo').output.firstRow.distinct_cities,4)),equals(activity('QualityMeteo').output.firstRow.invalid,0)),greater(activity('QualityVelib').output.firstRow.total,0)),equals(activity('QualityVelib').output.firstRow.total,activity('QualityVelib').output.firstRow.distinct_ids)),equals(activity('QualityVelib').output.firstRow.invalid,0))"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "RefusePublication",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "DQ_FAILED",
+                "message": "Quality gate failed; previous consumption snapshots and watermarks preserved"
+              }
+            }
+          ],
+          "ifTrueActivities": [
+            {
+              "inputs": [
+                {
+                  "parameters": {
+                    "folder": {
+                      "type": "Expression",
+                      "value": "@concat('analytics/',pipeline().parameters.batch_id)"
+                    }
+                  },
+                  "referenceName": "DS_STAGING_BINARY_V2",
+                  "type": "DatasetReference"
+                }
+              ],
+              "name": "PublishSnapshot",
+              "outputs": [
+                {
+                  "parameters": {
+                    "folder": {
+                      "type": "Expression",
+                      "value": "@concat('snapshots/',pipeline().parameters.batch_id)"
+                    }
+                  },
+                  "referenceName": "DS_CONSUMPTION_BINARY_V2",
+                  "type": "DatasetReference"
+                }
+              ],
+              "policy": {
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "timeout": "00:20:00"
+              },
+              "type": "Copy",
+              "typeProperties": {
+                "enableStaging": false,
+                "sink": {
+                  "storeSettings": {
+                    "copyBehavior": "PreserveHierarchy",
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "type": "BinarySink"
+                },
+                "source": {
+                  "storeSettings": {
+                    "recursive": true,
+                    "type": "AzureBlobFSReadSettings"
+                  },
+                  "type": "BinarySource"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "concurrency": 2,
+    "lastPublishTime": "2026-10-23T01:17:48Z",
+    "parameters": {
+      "aux_batch_id": {
+        "type": "String"
+      },
+      "batch_id": {
+        "type": "String"
+      },
+      "sql_batch_id": {
+        "type": "String"
+      }
+    }
+  }
+}

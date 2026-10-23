@@ -1,0 +1,5 @@
+{
+  "publicNetwork": "Enabled",
+  "rbac": true,
+  "softDelete": true
+}

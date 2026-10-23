@@ -1,0 +1,249 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "dependsOn": [],
+        "name": "CaptureBounds",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 15,
+          "timeout": "00:05:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT CONVERT(varchar(33),MAX(modifie_le),126) AS upper_locations, (SELECT CONVERT(varchar(33),MAX(modifie_le),126) FROM dbo.abonnes) AS upper_abonnes FROM dbo.locations",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CaptureBounds",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IngestSQL",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "upper_abonnes": {
+              "type": "Expression",
+              "value": "@activity('CaptureBounds').output.firstRow.upper_abonnes"
+            },
+            "upper_locations": {
+              "type": "Expression",
+              "value": "@activity('CaptureBounds').output.firstRow.upper_locations"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_INGEST_SQL",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IngestSQL",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "RefreshWeather",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "target_date": {
+              "type": "Expression",
+              "value": "@pipeline().parameters.target_date"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_00_REFRESH_METEO_V2",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "RefreshWeather",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IngestAux",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_INGEST_AUX",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IngestAux",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "LocationsFile",
+        "type": "GetMetadata",
+        "typeProperties": {
+          "dataset": {
+            "parameters": {
+              "filename": "locations.parquet",
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('sql/locations/run_id=',pipeline().RunId)"
+              }
+            },
+            "referenceName": "DS_RAW_PARQUET",
+            "type": "DatasetReference"
+          },
+          "fieldList": [
+            "exists"
+          ],
+          "storeSettings": {
+            "type": "AzureBlobFSReadSettings"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "LocationsFile",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IfLocationsFile",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@activity('LocationsFile').output.exists"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "NoNewLocations",
+              "type": "Wait",
+              "typeProperties": {
+                "waitTimeInSeconds": 1
+              }
+            }
+          ],
+          "ifTrueActivities": [
+            {
+              "dependsOn": [],
+              "name": "Silver",
+              "type": "ExecutePipeline",
+              "typeProperties": {
+                "parameters": {
+                  "batch_id": {
+                    "type": "Expression",
+                    "value": "@pipeline().RunId"
+                  },
+                  "input_path": {
+                    "type": "Expression",
+                    "value": "@concat('sql/locations/run_id=',pipeline().RunId)"
+                  }
+                },
+                "pipeline": {
+                  "referenceName": "PL_02_SQL_TO_SILVER_V2",
+                  "type": "PipelineReference"
+                },
+                "waitOnCompletion": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IfLocationsFile",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "Analytics",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "aux_batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "sql_batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_03_ANALYTICS_V2",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "Analytics",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "RequireFullCertification",
+        "type": "Fail",
+        "typeProperties": {
+          "errorCode": "FULL_CERTIFICATION_REQUIRED",
+          "message": "Gold snapshot produced by structural gates. Watermarks not advanced: full raw reconciliation, exactness and SLA certification must be integrated before enabling commits."
+        }
+      }
+    ],
+    "concurrency": 1,
+    "lastPublishTime": "2026-10-23T01:12:04Z",
+    "parameters": {
+      "target_date": {
+        "defaultValue": "",
+        "type": "String"
+      }
+    }
+  }
+}

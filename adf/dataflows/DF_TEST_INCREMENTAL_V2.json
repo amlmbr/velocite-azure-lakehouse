@@ -1,0 +1,161 @@
+{
+  "properties": {
+    "type": "MappingDataFlow",
+    "typeProperties": {
+      "scriptLines": [
+        "parameters{",
+        "     salt as string,",
+        "     inputPath as string,",
+        "     batchId as string",
+        "}",
+        "source(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     ignoreNoFilesFound: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'raw',",
+        "     folderPath: ($inputPath),",
+        "     fileName: 'locations.parquet') ~> RawLocations",
+        "source(output(location_id as integer, modifie_le as timestamp), allowSchemaDrift: false, validateSchema: false, format: 'delta', fileSystem: 'curated', folderPath: 'validation/session_20261023/locations_delta') ~> ExistingSilver",
+        "ExistingSilver select(mapColumn(existing_location_id = location_id, existing_modifie_le = modifie_le)) ~> ExistingVersions",
+        "RawLocations derive(validite_ok = !isNull(toInteger(byName('location_id'))) && !isNull(toInteger(byName('abonne_id'))) && !isNull(toInteger(byName('station_depart'))) && !isNull(toInteger(byName('station_arrivee'))) && !isNull(toTimestamp(byName('debut'))) && !isNull(toTimestamp(byName('modifie_le'))) && !isNull(toDecimal(byName('montant'), 6, 2)) && toDecimal(byName('montant'), 6, 2) >= 0 && (isNull(byName('fin')) || (!isNull(toTimestamp(byName('fin'))) && toTimestamp(byName('fin')) >= toTimestamp(byName('debut')))),",
+        "          dq_location_id = toInteger(byName('location_id')),",
+        "          dq_modifie_le = toTimestamp(byName('modifie_le'))) ~> DQColumns",
+        "DQColumns split(validite_ok == true(),",
+        "     disjoint: false) ~> SplitQuality@(ValidRows, InvalidRows)",
+        "SplitQuality@ValidRows window(over(dq_location_id),",
+        "     desc(dq_modifie_le, false),",
+        "     version_rank = rowNumber()) ~> RankVersions",
+        "RankVersions filter(version_rank == 1) ~> UniqueVersions",
+        "UniqueVersions, ExistingVersions lookup(dq_location_id == existing_location_id, multiple: false, pickup: 'any', broadcast: 'auto') ~> VersionLookup",
+        "VersionLookup filter(isNull(existing_location_id) || dq_modifie_le > existing_modifie_le) ~> NewerVersions",
+        "NewerVersions derive(silver_location_id = dq_location_id,",
+        "          silver_montant = toDecimal(byName('montant'), 6, 2),",
+        "          silver_modifie_le = dq_modifie_le,",
+        "          silver_station_depart = toInteger(byName('station_depart')),",
+        "          silver_station_arrivee = toInteger(byName('station_arrivee')),",
+        "          silver_debut = toTimestamp(byName('debut')),",
+        "          silver_fin = toTimestamp(byName('fin')),",
+        "          abonne_pseudo = sha2(256, toString(byName('abonne_id')), $salt)) ~> SilverColumns",
+        "SilverColumns select(mapColumn(",
+        "          location_id = silver_location_id,",
+        "          montant = silver_montant,",
+        "          modifie_le = silver_modifie_le,",
+        "          station_depart = silver_station_depart,",
+        "          station_arrivee = silver_station_arrivee,",
+        "          debut = silver_debut,",
+        "          fin = silver_fin,",
+        "          abonne_pseudo",
+        "     ),",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true) ~> SecureSelect",
+        "SecureSelect alterRow(upsertIf(true())) ~> SetUpsert",
+        "SplitQuality@InvalidRows derive(batch_id = $batchId,",
+        "          rejection_reason = concat('INVALID_LOCATION;',",
+        "               iif(isNull(toInteger(byName('location_id'))), 'LOCATION_ID;', ''),",
+        "               iif(isNull(toInteger(byName('abonne_id'))), 'SUBSCRIBER_ID;', ''),",
+        "               iif(isNull(toTimestamp(byName('debut'))), 'START_MISSING_OR_INVALID;', ''),",
+        "               iif(isNull(toTimestamp(byName('fin'))), 'END_MISSING_OR_INVALID;', ''),",
+        "               iif(isNull(toTimestamp(byName('modifie_le'))), 'VERSION_MISSING_OR_INVALID;', ''),",
+        "               iif(isNull(toDecimal(byName('montant'),12,2)) || toDecimal(byName('montant'),12,2) < 0, 'AMOUNT_INVALID;', ''),",
+        "               iif(toTimestamp(byName('fin')) < toTimestamp(byName('debut')), 'END_BEFORE_START;', ''),",
+        "               iif(isNull(toInteger(byName('station_depart'))) || isNull(toInteger(byName('station_arrivee'))), 'STATION_ID;', ''))) ~> QuarantineDetails",
+        "QuarantineDetails sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'parquet',",
+        "     fileSystem: 'staging',",
+        "     folderPath: ('quarantine/locations/' + $batchId),",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true) ~> Quarantine",
+        "SetUpsert sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     format: 'delta',",
+        "     fileSystem: 'curated',",
+        "     folderPath: 'validation/session_20261023/locations_delta',",
+        "     mergeSchema: false,",
+        "     autoCompact: false,",
+        "     optimizedWrite: false,",
+        "     vacuum: 0,",
+        "     deletable: false,",
+        "     insertable: true,",
+        "     updateable: false,",
+        "     upsertable: true,",
+        "     keys:['location_id'],",
+        "     umask: 0022,",
+        "     preCommands: [],",
+        "     postCommands: [],",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true) ~> SilverDelta"
+      ],
+      "sinks": [
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "Quarantine"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "SilverDelta"
+        }
+      ],
+      "sources": [
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "RawLocations"
+        },
+        {
+          "linkedService": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+          },
+          "name": "ExistingSilver"
+        }
+      ],
+      "transformations": [
+        {
+          "name": "DQColumns"
+        },
+        {
+          "name": "SplitQuality"
+        },
+        {
+          "name": "RankVersions"
+        },
+        {
+          "name": "UniqueVersions"
+        },
+        {
+          "name": "SilverColumns"
+        },
+        {
+          "name": "SecureSelect"
+        },
+        {
+          "name": "SetUpsert"
+        },
+        {
+          "name": "ExistingVersions"
+        },
+        {
+          "name": "VersionLookup"
+        },
+        {
+          "name": "NewerVersions"
+        },
+        {
+          "name": "QuarantineDetails"
+        }
+      ]
+    }
+  }
+}

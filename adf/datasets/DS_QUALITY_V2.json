@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "LS_ADLS",
+      "type": "LinkedServiceReference"
+    },
+    "parameters": {
+      "folder": {
+        "type": "String"
+      }
+    },
+    "type": "Json",
+    "typeProperties": {
+      "location": {
+        "fileName": "quality.json",
+        "fileSystem": "staging",
+        "folderPath": {
+          "type": "Expression",
+          "value": "@dataset().folder"
+        },
+        "type": "AzureBlobFSLocation"
+      }
+    }
+  }
+}

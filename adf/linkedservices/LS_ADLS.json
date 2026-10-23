@@ -1,0 +1,8 @@
+{
+  "properties": {
+    "type": "AzureBlobFS",
+    "typeProperties": {
+      "url": "https://stvct26a7b9.dfs.core.windows.net/"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "dependsOn": [],
+        "name": "ReadSourceAndSecurity",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 15,
+          "timeout": "00:05:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT (SELECT COUNT_BIG(*) FROM dbo.abonnes) AS abonnes,(SELECT COUNT_BIG(*) FROM dbo.stations) AS stations,(SELECT COUNT_BIG(*) FROM dbo.locations) AS locations,HAS_PERMS_BY_NAME('dbo.locations','OBJECT','UPDATE') AS can_update_locations,HAS_PERMS_BY_NAME('dbo.sp_commit_watermark','OBJECT','EXECUTE') AS can_commit,IS_MEMBER('db_owner') AS is_db_owner,(SELECT TYPE_NAME(user_type_id) FROM sys.parameters WHERE object_id=OBJECT_ID('dbo.sp_commit_watermark') AND name='@new_watermark') AS watermark_parameter_type,(SELECT scale FROM sys.parameters WHERE object_id=OBJECT_ID('dbo.sp_commit_watermark') AND name='@new_watermark') AS watermark_parameter_scale",
+            "type": "AzureSqlSource"
+          }
+        }
+      }
+    ],
+    "lastPublishTime": "2026-10-23T08:09:29Z"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "LS_ADLS",
+      "type": "LinkedServiceReference"
+    },
+    "schema": [],
+    "type": "DelimitedText",
+    "typeProperties": {
+      "columnDelimiter": ",",
+      "escapeChar": "\\",
+      "firstRowAsHeader": true,
+      "location": {
+        "fileName": "meteo_demo.csv",
+        "fileSystem": "landing",
+        "folderPath": "meteo",
+        "type": "AzureBlobFSLocation"
+      },
+      "quoteChar": "\""
+    }
+  }
+}

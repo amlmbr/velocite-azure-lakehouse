@@ -1,0 +1,10 @@
+{
+  "properties": {
+    "type": "RestService",
+    "typeProperties": {
+      "authenticationType": "Anonymous",
+      "enableServerCertificateValidation": true,
+      "url": "https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/"
+    }
+  }
+}

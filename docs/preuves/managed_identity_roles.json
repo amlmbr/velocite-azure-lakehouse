@@ -1,0 +1,26 @@
+[
+  {
+    "role": "Storage Blob Data Contributor",
+    "scope": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Storage/storageAccounts/stvct26a7b9/blobServices/default/containers/raw"
+  },
+  {
+    "role": "Storage Blob Data Contributor",
+    "scope": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Storage/storageAccounts/stvct26a7b9/blobServices/default/containers/staging"
+  },
+  {
+    "role": "Storage Blob Data Contributor",
+    "scope": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Storage/storageAccounts/stvct26a7b9/blobServices/default/containers/curated"
+  },
+  {
+    "role": "Storage Blob Data Contributor",
+    "scope": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Storage/storageAccounts/stvct26a7b9/blobServices/default/containers/consumption"
+  },
+  {
+    "role": "Storage Blob Data Reader",
+    "scope": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Storage/storageAccounts/stvct26a7b9/blobServices/default/containers/landing"
+  },
+  {
+    "role": "Key Vault Secrets User",
+    "scope": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.KeyVault/vaults/kv-vct26a7b9"
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "LS_ADLS",
+      "type": "LinkedServiceReference"
+    },
+    "parameters": {
+      "folder": {
+        "type": "String"
+      }
+    },
+    "type": "Binary",
+    "typeProperties": {
+      "location": {
+        "fileSystem": "consumption",
+        "folderPath": {
+          "type": "Expression",
+          "value": "@dataset().folder"
+        },
+        "type": "AzureBlobFSLocation"
+      }
+    }
+  }
+}

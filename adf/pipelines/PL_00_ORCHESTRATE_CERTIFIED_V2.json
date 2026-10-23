@@ -1,0 +1,486 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "TargetDay",
+        "type": "SetVariable",
+        "typeProperties": {
+          "value": {
+            "type": "Expression",
+            "value": "@if(empty(pipeline().parameters.target_date),formatDateTime(addDays(convertTimeZone(utcNow(),'UTC','Romance Standard Time'),-1),'yyyy-MM-dd'),formatDateTime(pipeline().parameters.target_date,'yyyy-MM-dd'))"
+          },
+          "variableName": "weather_day"
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "TargetDay",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "CaptureBounds",
+        "policy": {
+          "retry": 1,
+          "retryIntervalInSeconds": 15,
+          "timeout": "00:05:00"
+        },
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "\nWITH b AS (\n SELECT MAX(modifie_le) AS ul,\n (SELECT MAX(modifie_le) FROM dbo.abonnes) AS ua FROM dbo.locations\n), s AS (\n SELECT MAX(CASE WHEN source_table='locations' THEN last_watermark END) AS ol,\n MAX(CASE WHEN source_table='abonnes' THEN last_watermark END) AS oa FROM dbo.pipeline_state\n)\nSELECT CONVERT(varchar(33),b.ul,126) AS upper_locations,\n CONVERT(varchar(33),b.ua,126) AS upper_abonnes,\n (SELECT COUNT_BIG(*) FROM dbo.locations) AS expected_locations,\n CONVERT(varchar(40),(SELECT SUM(CONVERT(decimal(18,2),montant)) FROM dbo.locations)) AS expected_montant,\n CASE WHEN b.ul>s.ol THEN (SELECT COUNT_BIG(*) FROM dbo.locations WHERE modifie_le>DATEADD(day,-7,s.ol) AND modifie_le<=b.ul) ELSE 0 END AS expected_raw_locations,\n CASE WHEN b.ua>s.oa THEN (SELECT COUNT_BIG(*) FROM dbo.abonnes WHERE modifie_le>DATEADD(day,-7,s.oa) AND modifie_le<=b.ua) ELSE 0 END AS expected_raw_abonnes,\n HAS_PERMS_BY_NAME('dbo.sp_commit_watermark','OBJECT','EXECUTE') AS can_commit\nFROM b CROSS JOIN s\n",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CaptureBounds",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "CheckCommitPermission",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@equals(activity('CaptureBounds').output.firstRow.can_commit,1)"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "NoCommitPermission",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "COMMIT_PERMISSION_MISSING",
+                "message": "Missing existing EXECUTE permission on watermark procedure; no data processing started"
+              }
+            }
+          ],
+          "ifTrueActivities": []
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CheckCommitPermission",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IngestSQL",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "upper_abonnes": {
+              "type": "Expression",
+              "value": "@activity('CaptureBounds').output.firstRow.upper_abonnes"
+            },
+            "upper_locations": {
+              "type": "Expression",
+              "value": "@activity('CaptureBounds').output.firstRow.upper_locations"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_INGEST_SQL_V2",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IfLocationsFile",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "RefreshWeather",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "target_date": {
+              "type": "Expression",
+              "value": "@variables('weather_day')"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_00_REFRESH_METEO_V2",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "RefreshWeather",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IngestAux",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_INGEST_API_V2",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IngestSQL",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "LocationsFile",
+        "type": "GetMetadata",
+        "typeProperties": {
+          "dataset": {
+            "parameters": {
+              "filename": "locations.parquet",
+              "folder": {
+                "type": "Expression",
+                "value": "@concat('sql/locations/run_id=',pipeline().RunId)"
+              }
+            },
+            "referenceName": "DS_RAW_PARQUET",
+            "type": "DatasetReference"
+          },
+          "fieldList": [
+            "exists"
+          ],
+          "storeSettings": {
+            "type": "AzureBlobFSReadSettings"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "LocationsFile",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "IfLocationsFile",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@activity('LocationsFile').output.exists"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "NoNewLocations",
+              "type": "Wait",
+              "typeProperties": {
+                "waitTimeInSeconds": 1
+              }
+            }
+          ],
+          "ifTrueActivities": [
+            {
+              "dependsOn": [],
+              "name": "Silver",
+              "type": "ExecutePipeline",
+              "typeProperties": {
+                "parameters": {
+                  "batch_id": {
+                    "type": "Expression",
+                    "value": "@pipeline().RunId"
+                  },
+                  "input_path": {
+                    "type": "Expression",
+                    "value": "@concat('sql/locations/run_id=',pipeline().RunId)"
+                  }
+                },
+                "pipeline": {
+                  "referenceName": "PL_02_SQL_TO_SILVER_V2",
+                  "type": "PipelineReference"
+                },
+                "waitOnCompletion": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "IngestAux",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "Analytics",
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "parameters": {
+            "aux_batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "expected_locations": {
+              "type": "Expression",
+              "value": "@string(activity('CaptureBounds').output.firstRow.expected_locations)"
+            },
+            "expected_montant": {
+              "type": "Expression",
+              "value": "@string(activity('CaptureBounds').output.firstRow.expected_montant)"
+            },
+            "expected_raw_abonnes": {
+              "type": "Expression",
+              "value": "@string(activity('CaptureBounds').output.firstRow.expected_raw_abonnes)"
+            },
+            "expected_raw_locations": {
+              "type": "Expression",
+              "value": "@string(activity('CaptureBounds').output.firstRow.expected_raw_locations)"
+            },
+            "max_api_age_seconds": 900,
+            "sql_batch_id": {
+              "type": "Expression",
+              "value": "@pipeline().RunId"
+            },
+            "weather_day": {
+              "type": "Expression",
+              "value": "@variables('weather_day')"
+            }
+          },
+          "pipeline": {
+            "referenceName": "PL_03_CERTIFIED_ANALYTICS_V2",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "Analytics",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "CommitAfterCertification",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@or(pipeline().parameters.validation_mode,lessOrEquals(ticks(convertTimeZone(utcNow(),'UTC','Romance Standard Time')),ticks(addMinutes(startOfDay(convertTimeZone(utcNow(),'UTC','Romance Standard Time')),390))))"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "SLAExceeded",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "SLA_EXCEEDED",
+                "message": "Certified snapshot generated after 06:30 Europe/Paris; watermarks not advanced"
+              }
+            }
+          ],
+          "ifTrueActivities": [
+            {
+              "name": "PublishCurrentMarker",
+              "policy": {
+                "retry": 1,
+                "retryIntervalInSeconds": 10,
+                "timeout": "00:02:00"
+              },
+              "type": "WebActivity",
+              "typeProperties": {
+                "authentication": {
+                  "resource": "https://storage.azure.com/",
+                  "type": "MSI"
+                },
+                "body": {
+                  "type": "Expression",
+                  "value": "@concat('{\"batch_id\":\"',pipeline().RunId,'\",\"snapshot\":\"snapshots/',pipeline().RunId,'\",\"published_at_utc\":\"',utcNow(),'\",\"weather_day\":\"',variables('weather_day'),'\",\"upper_locations\":\"',activity('CaptureBounds').output.firstRow.upper_locations,'\",\"upper_abonnes\":\"',activity('CaptureBounds').output.firstRow.upper_abonnes,'\",\"locations\":',string(activity('CaptureBounds').output.firstRow.expected_locations),',\"execution_mode\":\"',if(pipeline().parameters.validation_mode,'validation','production'),'\",\"sla_met\":',toLower(string(lessOrEquals(ticks(convertTimeZone(utcNow(),'UTC','Romance Standard Time')),ticks(addMinutes(startOfDay(convertTimeZone(utcNow(),'UTC','Romance Standard Time')),390))))),',\"status\":\"certified\"}')"
+                },
+                "headers": {
+                  "Content-Type": "application/json",
+                  "x-ms-blob-type": "BlockBlob",
+                  "x-ms-version": "2023-11-03"
+                },
+                "method": "PUT",
+                "url": "https://stvct26a7b9.blob.core.windows.net/consumption/current.json"
+              }
+            },
+            {
+              "dependsOn": [
+                {
+                  "activity": "PublishCurrentMarker",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "linkedServiceName": {
+                "referenceName": "LS_SQL",
+                "type": "LinkedServiceReference"
+              },
+              "name": "CommitLocations",
+              "type": "SqlServerStoredProcedure",
+              "typeProperties": {
+                "storedProcedureName": "dbo.sp_commit_watermark",
+                "storedProcedureParameters": {
+                  "new_watermark": {
+                    "type": "String",
+                    "value": {
+                      "type": "Expression",
+                      "value": "@activity('CaptureBounds').output.firstRow.upper_locations"
+                    }
+                  },
+                  "source_table": {
+                    "type": "String",
+                    "value": "locations"
+                  }
+                }
+              }
+            },
+            {
+              "dependsOn": [
+                {
+                  "activity": "CommitLocations",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "linkedServiceName": {
+                "referenceName": "LS_SQL",
+                "type": "LinkedServiceReference"
+              },
+              "name": "CommitAbonnes",
+              "type": "SqlServerStoredProcedure",
+              "typeProperties": {
+                "storedProcedureName": "dbo.sp_commit_watermark",
+                "storedProcedureParameters": {
+                  "new_watermark": {
+                    "type": "String",
+                    "value": {
+                      "type": "Expression",
+                      "value": "@activity('CaptureBounds').output.firstRow.upper_abonnes"
+                    }
+                  },
+                  "source_table": {
+                    "type": "String",
+                    "value": "abonnes"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "CommitAfterCertification",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "ReadCommittedWatermarks",
+        "type": "Lookup",
+        "typeProperties": {
+          "dataset": {
+            "referenceName": "DS_SQL_STATE",
+            "type": "DatasetReference"
+          },
+          "firstRowOnly": true,
+          "source": {
+            "sqlReaderQuery": "SELECT MAX(CASE WHEN source_table='locations' THEN CONVERT(varchar(33),last_watermark,126) END) AS locations, MAX(CASE WHEN source_table='abonnes' THEN CONVERT(varchar(33),last_watermark,126) END) AS abonnes FROM dbo.pipeline_state",
+            "type": "AzureSqlSource"
+          }
+        }
+      },
+      {
+        "dependsOn": [
+          {
+            "activity": "ReadCommittedWatermarks",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "name": "VerifyWatermarkCommit",
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "type": "Expression",
+            "value": "@and(greaterOrEquals(ticks(activity('ReadCommittedWatermarks').output.firstRow.locations),ticks(activity('CaptureBounds').output.firstRow.upper_locations)),greaterOrEquals(ticks(activity('ReadCommittedWatermarks').output.firstRow.abonnes),ticks(activity('CaptureBounds').output.firstRow.upper_abonnes)))"
+          },
+          "ifFalseActivities": [
+            {
+              "name": "WatermarkVerificationFailed",
+              "type": "Fail",
+              "typeProperties": {
+                "errorCode": "WATERMARK_VERIFICATION_FAILED",
+                "message": "Stored procedure returned but watermarks did not reach the captured upper bounds"
+              }
+            }
+          ],
+          "ifTrueActivities": []
+        }
+      }
+    ],
+    "concurrency": 1,
+    "lastPublishTime": "2026-10-23T08:00:38Z",
+    "parameters": {
+      "target_date": {
+        "defaultValue": "",
+        "type": "String"
+      },
+      "validation_mode": {
+        "defaultValue": false,
+        "type": "Bool"
+      }
+    },
+    "variables": {
+      "weather_day": {
+        "type": "String"
+      }
+    }
+  }
+}

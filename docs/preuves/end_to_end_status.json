@@ -1,0 +1,29 @@
+{
+  "annotations": [],
+  "debugRunId": null,
+  "durationInMs": 758322,
+  "id": "/SUBSCRIPTIONS/972662E3-6EF1-446F-9B54-B480F13AF457/RESOURCEGROUPS/RG-VELOCITE-DEV/PROVIDERS/MICROSOFT.DATAFACTORY/FACTORIES/ADF-VCT26A7B9/pipelineruns/9266ed32-4edf-4559-a790-dcd86a099475",
+  "invokedBy": {
+    "id": "caec3858fc324a4da6dc6e257fdfc3ad",
+    "invokedByType": "Manual",
+    "name": "Manual"
+  },
+  "isLatest": true,
+  "lastUpdated": "2026-10-23T07:56:43.3395435Z",
+  "message": "Operation on target WatermarkVerificationFailed failed: Stored procedure returned but watermarks did not reach the captured upper bounds",
+  "parameters": {
+    "target_date": "",
+    "validation_mode": "True"
+  },
+  "pipelineName": "PL_00_ORCHESTRATE_CERTIFIED_V2",
+  "pipelineReturnValue": {},
+  "runDimension": {
+    "windowEndTime": null,
+    "windowStartTime": null
+  },
+  "runEnd": "2026-10-23T07:56:43.3390654Z",
+  "runGroupId": "9266ed32-4edf-4559-a790-dcd86a099475",
+  "runId": "9266ed32-4edf-4559-a790-dcd86a099475",
+  "runStart": "2026-10-23T07:44:05.016859Z",
+  "status": "Failed"
+}

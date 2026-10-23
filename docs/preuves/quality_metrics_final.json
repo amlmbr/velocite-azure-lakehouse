@@ -1,0 +1,42 @@
+{
+  "QualityAbonnes": {
+    "distinct_ids": 0,
+    "invalid": 0,
+    "raw_rows": 0
+  },
+  "QualityVelib": {
+    "distinct_ids": 1519,
+    "invalid": 0,
+    "latest_feed_updated": 1792743649,
+    "latest_reported": 1792743053,
+    "oldest_reported": 1511790036,
+    "total": 1519
+  },
+  "QualitySilver": {
+    "distinct_ids": 200000,
+    "invalid_amounts": 0,
+    "invalid_dates": 0,
+    "invalid_pseudo": 0,
+    "latest_event": "2026-10-22 20:06:45",
+    "missing_keys": 0,
+    "missing_references": 0,
+    "total": 200000,
+    "total_montant": 999995.0
+  },
+  "QualityMeteo": {
+    "distinct_cities": 4,
+    "invalid": 0,
+    "max_day": "2026-10-22",
+    "min_day": "2026-10-22",
+    "total": 4
+  },
+  "QualityRaw": {
+    "distinct_raw_ids": 0,
+    "raw_invalid": 0,
+    "raw_rows": 0
+  },
+  "QualityExact": {
+    "checked": 0,
+    "differences": 0
+  }
+}

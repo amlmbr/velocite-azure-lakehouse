@@ -1,0 +1,209 @@
+{
+  "factory": "https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.DataFactory/factories/adf-vct26a7b9",
+  "definitions": [
+    {
+      "kind": "linkedservices",
+      "name": "LS_SQL",
+      "path": "adf/linkedservices/LS_SQL.json"
+    },
+    {
+      "kind": "linkedservices",
+      "name": "LS_ADLS",
+      "path": "adf/linkedservices/LS_ADLS.json"
+    },
+    {
+      "kind": "linkedservices",
+      "name": "LS_REST",
+      "path": "adf/linkedservices/LS_REST.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_SQL_LOCATIONS",
+      "path": "adf/datasets/DS_SQL_LOCATIONS.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_RAW_PARQUET",
+      "path": "adf/datasets/DS_RAW_PARQUET.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_SQL_STATE",
+      "path": "adf/datasets/DS_SQL_STATE.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_SQL_ABONNES",
+      "path": "adf/datasets/DS_SQL_ABONNES.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_SQL_STATIONS",
+      "path": "adf/datasets/DS_SQL_STATIONS.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_LANDING_CSV",
+      "path": "adf/datasets/DS_LANDING_CSV.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_RAW_CSV",
+      "path": "adf/datasets/DS_RAW_CSV.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_REST_STATIONS",
+      "path": "adf/datasets/DS_REST_STATIONS.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_RAW_JSON",
+      "path": "adf/datasets/DS_RAW_JSON.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_QUALITY_V2",
+      "path": "adf/datasets/DS_QUALITY_V2.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_STAGING_BINARY_V2",
+      "path": "adf/datasets/DS_STAGING_BINARY_V2.json"
+    },
+    {
+      "kind": "datasets",
+      "name": "DS_CONSUMPTION_BINARY_V2",
+      "path": "adf/datasets/DS_CONSUMPTION_BINARY_V2.json"
+    },
+    {
+      "kind": "dataflows",
+      "name": "DF_01_LOCATIONS_TO_SILVER",
+      "path": "adf/dataflows/DF_01_LOCATIONS_TO_SILVER.json"
+    },
+    {
+      "kind": "dataflows",
+      "name": "DF_01_LOCATIONS_V2",
+      "path": "adf/dataflows/DF_01_LOCATIONS_V2.json"
+    },
+    {
+      "kind": "dataflows",
+      "name": "DF_02_ANALYTICS_V2",
+      "path": "adf/dataflows/DF_02_ANALYTICS_V2.json"
+    },
+    {
+      "kind": "dataflows",
+      "name": "DF_TEST_INCREMENTAL_V2",
+      "path": "adf/dataflows/DF_TEST_INCREMENTAL_V2.json"
+    },
+    {
+      "kind": "dataflows",
+      "name": "DF_02_ANALYTICS_CERTIFIED_V2",
+      "path": "adf/dataflows/DF_02_ANALYTICS_CERTIFIED_V2.json"
+    },
+    {
+      "kind": "dataflows",
+      "name": "DF_TEST_GOLD_J7_V2",
+      "path": "adf/dataflows/DF_TEST_GOLD_J7_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_TEST_SQL_TO_RAW",
+      "path": "adf/pipelines/PL_TEST_SQL_TO_RAW.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_INGEST_SQL",
+      "path": "adf/pipelines/PL_INGEST_SQL.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_01_SQL_BRONZE_TEST",
+      "path": "adf/pipelines/PL_01_SQL_BRONZE_TEST.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_INGEST_AUX",
+      "path": "adf/pipelines/PL_INGEST_AUX.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_02_SQL_TO_SILVER_V2",
+      "path": "adf/pipelines/PL_02_SQL_TO_SILVER_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_TEST_KEYVAULT_V2",
+      "path": "adf/pipelines/PL_TEST_KEYVAULT_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_03_ANALYTICS_V2",
+      "path": "adf/pipelines/PL_03_ANALYTICS_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_00_REFRESH_METEO_V2",
+      "path": "adf/pipelines/PL_00_REFRESH_METEO_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_00_ORCHESTRATE_V2",
+      "path": "adf/pipelines/PL_00_ORCHESTRATE_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_TEST_INCREMENTAL_V2",
+      "path": "adf/pipelines/PL_TEST_INCREMENTAL_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_TEST_QUALITY_GATE_V2",
+      "path": "adf/pipelines/PL_TEST_QUALITY_GATE_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_03_CERTIFIED_ANALYTICS_V2",
+      "path": "adf/pipelines/PL_03_CERTIFIED_ANALYTICS_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_INGEST_SQL_V2",
+      "path": "adf/pipelines/PL_INGEST_SQL_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_INGEST_API_V2",
+      "path": "adf/pipelines/PL_INGEST_API_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_00_ORCHESTRATE_CERTIFIED_V2",
+      "path": "adf/pipelines/PL_00_ORCHESTRATE_CERTIFIED_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_TEST_SOURCE_STATE_V2",
+      "path": "adf/pipelines/PL_TEST_SOURCE_STATE_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_TEST_GOLD_J7_V2",
+      "path": "adf/pipelines/PL_TEST_GOLD_J7_V2.json"
+    },
+    {
+      "kind": "pipelines",
+      "name": "PL_RECOVER_CERTIFIED_COMMIT_V2",
+      "path": "adf/pipelines/PL_RECOVER_CERTIFIED_COMMIT_V2.json"
+    },
+    {
+      "kind": "triggers",
+      "name": "TR_DAILY_PARIS_V2",
+      "path": "adf/triggers/TR_DAILY_PARIS_V2.json"
+    }
+  ],
+  "redacted_fields": [],
+  "publication_notes": [
+    "Subscription identifier replaced by a placeholder. ADF object properties retained. No data files or secret values included."
+  ]
+}

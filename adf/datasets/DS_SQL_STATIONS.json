@@ -1,0 +1,14 @@
+{
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "LS_SQL",
+      "type": "LinkedServiceReference"
+    },
+    "schema": [],
+    "type": "AzureSqlTable",
+    "typeProperties": {
+      "schema": "dbo",
+      "table": "stations"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "value": [
+    {
+      "id": "/subscriptions/<subscription-id>/resourcegroups/rg-velocite-dev/providers/microsoft.datafactory/factories/adf-vct26a7b9/providers/Microsoft.AlertsManagement/alerts/4bd0bb67-995f-4a13-8bd3-0f54a3b7f000",
+      "name": "alert-velocite-adf-failed",
+      "properties": {
+        "essentials": {
+          "actionStatus": {
+            "isSuppressed": false
+          },
+          "alertRule": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Insights/metricAlerts/alert-velocite-adf-failed",
+          "alertState": "New",
+          "description": "VeloCite ADF failure. Inspect Monitor. No email action group configured.",
+          "lastModifiedDateTime": "2026-10-23T08:01:02.8367308Z",
+          "lastModifiedUserName": "System",
+          "monitorCondition": "Fired",
+          "monitorService": "Platform",
+          "severity": "Sev2",
+          "signalType": "Metric",
+          "sourceCreatedId": "<subscription-id>_rg-velocite-dev_Microsoft.Insights_metricAlerts_alert-velocite-adf-failed_236593345",
+          "startDateTime": "2026-10-23T08:01:02.8367308Z",
+          "targetResource": "/subscriptions/<subscription-id>/resourcegroups/rg-velocite-dev/providers/microsoft.datafactory/factories/adf-vct26a7b9",
+          "targetResourceGroup": "rg-velocite-dev",
+          "targetResourceName": "adf-vct26a7b9",
+          "targetResourceType": "microsoft.datafactory/factories"
+        }
+      },
+      "type": "microsoft.alertsmanagement/alerts"
+    },
+    {
+      "id": "/subscriptions/<subscription-id>/resourcegroups/rg-velocite-dev/providers/microsoft.datafactory/factories/adf-vct26a7b9/providers/Microsoft.AlertsManagement/alerts/c29c3596-cb74-46c3-abb2-53b79a40f000",
+      "name": "alert-velocite-adf-failed",
+      "properties": {
+        "essentials": {
+          "actionStatus": {
+            "isSuppressed": false
+          },
+          "alertRule": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Insights/metricAlerts/alert-velocite-adf-failed",
+          "alertState": "New",
+          "description": "VeloCite ADF failure. Inspect Monitor. No email action group configured.",
+          "lastModifiedDateTime": "2026-10-23T02:38:35.6335862Z",
+          "lastModifiedUserName": "System",
+          "monitorCondition": "Resolved",
+          "monitorConditionResolvedDateTime": "2026-10-23T02:38:35.8387857Z",
+          "monitorService": "Platform",
+          "severity": "Sev2",
+          "signalType": "Metric",
+          "sourceCreatedId": "<subscription-id>_rg-velocite-dev_Microsoft.Insights_metricAlerts_alert-velocite-adf-failed_236593345",
+          "startDateTime": "2026-10-23T02:08:42.1012219Z",
+          "targetResource": "/subscriptions/<subscription-id>/resourcegroups/rg-velocite-dev/providers/microsoft.datafactory/factories/adf-vct26a7b9",
+          "targetResourceGroup": "rg-velocite-dev",
+          "targetResourceName": "adf-vct26a7b9",
+          "targetResourceType": "microsoft.datafactory/factories"
+        }
+      },
+      "type": "microsoft.alertsmanagement/alerts"
+    },
+    {
+      "id": "/subscriptions/<subscription-id>/resourcegroups/rg-velocite-dev/providers/microsoft.datafactory/factories/adf-vct26a7b9/providers/Microsoft.AlertsManagement/alerts/95d2f115-48b1-4a4b-89ee-257ac385f000",
+      "name": "alert-velocite-adf-failed",
+      "properties": {
+        "essentials": {
+          "actionStatus": {
+            "isSuppressed": false
+          },
+          "alertRule": "/subscriptions/<subscription-id>/resourceGroups/rg-velocite-dev/providers/Microsoft.Insights/metricAlerts/alert-velocite-adf-failed",
+          "alertState": "New",
+          "description": "VeloCite ADF failure. Inspect Monitor. No email action group configured.",
+          "lastModifiedDateTime": "2026-10-23T02:03:49.1834197Z",
+          "lastModifiedUserName": "System",
+          "monitorCondition": "Resolved",
+          "monitorConditionResolvedDateTime": "2026-10-23T02:03:49.385782Z",
+          "monitorService": "Platform",
+          "severity": "Sev2",
+          "signalType": "Metric",
+          "sourceCreatedId": "<subscription-id>_rg-velocite-dev_Microsoft.Insights_metricAlerts_alert-velocite-adf-failed_236593345",
+          "startDateTime": "2026-10-23T01:21:05.2323632Z",
+          "targetResource": "/subscriptions/<subscription-id>/resourcegroups/rg-velocite-dev/providers/microsoft.datafactory/factories/adf-vct26a7b9",
+          "targetResourceGroup": "rg-velocite-dev",
+          "targetResourceName": "adf-vct26a7b9",
+          "targetResourceType": "microsoft.datafactory/factories"
+        }
+      },
+      "type": "microsoft.alertsmanagement/alerts"
+    }
+  ]
+}
